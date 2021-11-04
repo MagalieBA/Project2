@@ -31,8 +31,11 @@ def book_extraction(link_book):        # FUNCTION TO EXTRACT FROM A BOOK PAGE
     image_tag = soup.find("img", alt=title).attrs["src"] #Extract the image url
     image_url = str(website_base_url) + str(image_tag[6:]) #Converts url link from relative to absolute 
 
-    #Creating a dictionnary with the extracted informations of the book
-    book_information = {
+    #Exports a csv file
+    with open ("""book_information""" + '.csv','w+',encoding="utf8",newline = '') as csvfile: # Example.csv gets created in the current working directory
+        my_writer = csv.writer(csvfile)
+        #Creating a dictionnary with the extracted informations of the book
+        book_information = {  
         "Page_url": product_page_url,
         "UPC": universal_product_code,
         "Title": title,
@@ -44,7 +47,7 @@ def book_extraction(link_book):        # FUNCTION TO EXTRACT FROM A BOOK PAGE
         "Rating": review_rating,
         "Image": image_url,
     }
-    return book_information
+    my_writer.writerow(book_information.values())
 
 #EXTRACTING ALLS BOOKS IN A CATEGORY
 def extract_books_url(input_category_url): 
@@ -56,7 +59,7 @@ def extract_books_url(input_category_url):
     #BROWSING ALL THE PAGE
     check_pages = most_soup.find("li", class_="current")
     all_pages_url = [input_category_url,] 
-    if check_pages : 
+    if check_pages : #checking if multiple pages exist
         total_pages = check_pages.string
         max_pages = int(total_pages.split()[-1]) + 1
         for i in range(2,max_pages) :
@@ -72,27 +75,62 @@ def extract_books_url(input_category_url):
         all_books_urls = []
         all_books = book_soup.find_all("article", class_="product_pod")
 
-    #Creer mon fichier CSV
-    with open ("""nomcategory""" + '.csv','w+',encoding="utf8",newline = '') as csvfile: # Example.csv gets created in the current working directory
+    #Exports a csv file
+    with open ("""all_books_url_in_category""" + '.csv','w+',encoding="utf8",newline = '') as csvfile: # Example.csv gets created in the current working directory
         my_writer = csv.writer(csvfile)
         for book in all_books:
             book_url_relative = book.find("h3").find("a").attrs["href"]
             book_url= website_base_url + "catalogue/" + str(book_url_relative[9:]) #converts relative link to absolute 
             all_books_urls.append(book_url)
-            book_info = book_extraction(book_url)
-            my_writer.writerow(book_info.values()) #Test
+            my_writer.writerow(book_url) 
+
+    return all_books_urls
 
 #EXTRACTING ALL THE CATEGORY URLS
 def extract_categories(website_base_url):
     website = requests.get(website_base_url)
     category_soup = BeautifulSoup(website.content, 'html.parser')
 
-    all_categories = category_soup.find("ul", class_="nav").find_all("a")
-    for category in all_categories:
-        category_url_relative = category.attrs["href"]
-        category_url= str(website_base_url) + str(category_url_relative) #converts relative link to absolute 
-        extract_books_url(category_url)
+    #Exports a csv file
+    with open ("""categories_url""" + '.csv','w+',encoding="utf8",newline = '') as csvfile: # Example.csv gets created in the current working directory
+        my_writer = csv.writer(csvfile)
+        all_categories = category_soup.find("ul", class_="nav").find_all("a")
+        all_categories_url=[]
 
-test = "https://books.toscrape.com/catalogue/the-picture-of-dorian-gray_270/index.html"
+        for category in all_categories:
+            category_url_relative = category.attrs["href"]
+            category_url= str(website_base_url) + str(category_url_relative) #converts relative link to absolute 
+            all_categories_url += category_url
+        my_writer.writerow(all_categories_url)
 
-extract_categories(website_base_url)
+    return all_categories_url
+
+def download_all_images(link):
+        categories = extract_categories(link)
+        all_category_books = []
+        for categorie in categories :
+            books = extract_books_url(categorie)
+            all_category_books += [books]
+
+        #Exports a csv file
+        with open ("""categories_url""" + '.csv','w+',encoding="utf8",newline = '') as csvfile: # Example.csv gets created in the current working directory
+            my_writer = csv.writer(csvfile)
+            for book in all_category_books :
+                #parser
+                book_page = requests.get(book)
+                book_soup = BeautifulSoup(book_page.content, 'html.parser')
+
+                #Extract the image url
+                image_tag = book_soup.find("img").attrs["src"] 
+                image_url = str(website_base_url) + str(image_tag[6:]) #Converts url link from relative to absolute 
+
+                my_writer.writerow(image_url) 
+                
+website = ""
+category_test = ""
+book_test = "https://books.toscrape.com/catalogue/the-picture-of-dorian-gray_270/index.html"
+
+#extract_categories(website)
+#extract_books_url(category_test)
+#book_extraction(book_test)
+#download_all_images(website)
